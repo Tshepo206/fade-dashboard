@@ -15,8 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://fade-ai-api-2csg3.sevalla.app";
+const API_BASE_URL ="https://fade-ai-api-2csg3.sevalla.app";
 
 type Summary = {
   revenue: number;
