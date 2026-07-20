@@ -18,6 +18,8 @@ import {
   X,
 } from "lucide-react";
 
+import { useCurrentWorkspace } from "@/hooks/use-current-workspace";
+
 type NavigationItem = {
   label: string;
   href: string;
@@ -178,17 +180,35 @@ function BrandBlock() {
   );
 }
 
-function BusinessWorkspaceCard() {
+function getBusinessInitials(businessName: string) {
+  const initials = businessName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("");
+
+  return initials || "W";
+}
+
+function BusinessWorkspaceCard({
+  businessName,
+  businessInitials,
+}: {
+  businessName: string;
+  businessInitials: string;
+}) {
   return (
     <div className="mx-4 mt-8 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-sm font-semibold text-white">
-          KG
+          {businessInitials}
         </div>
 
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-white">
-            KG Barber
+            {businessName}
           </p>
 
           <p className="mt-1 text-xs leading-5 text-zinc-500">
@@ -209,7 +229,13 @@ function BusinessWorkspaceCard() {
   );
 }
 
-function SidebarFooter() {
+function SidebarFooter({
+  businessName,
+  businessInitials,
+}: {
+  businessName: string;
+  businessInitials: string;
+}) {
   return (
     <div className="border-t border-zinc-800 p-4">
       <Link
@@ -217,12 +243,12 @@ function SidebarFooter() {
         className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3 transition hover:bg-zinc-900"
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-sm font-semibold text-white">
-          KG
+          {businessInitials}
         </div>
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-white">
-            KG Barber
+            {businessName}
           </p>
 
           <p className="truncate text-xs text-zinc-500">
@@ -239,6 +265,11 @@ function SidebarFooter() {
 export function AppSidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const workspace = useCurrentWorkspace();
+  const businessName =
+    workspace?.business_name || "Workspace";
+  const businessInitials =
+    getBusinessInitials(businessName);
 
   return (
     <>
@@ -250,10 +281,16 @@ export function AppSidebar() {
         <div className="flex flex-1 flex-col overflow-y-auto py-6">
           <SidebarNavigation pathname={pathname} />
 
-          <BusinessWorkspaceCard />
+          <BusinessWorkspaceCard
+            businessName={businessName}
+            businessInitials={businessInitials}
+          />
         </div>
 
-        <SidebarFooter />
+        <SidebarFooter
+          businessName={businessName}
+          businessInitials={businessInitials}
+        />
       </aside>
 
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-800 bg-black/90 px-4 backdrop-blur lg:hidden">
@@ -298,10 +335,16 @@ export function AppSidebar() {
                 onNavigate={() => setMobileOpen(false)}
               />
 
-              <BusinessWorkspaceCard />
+              <BusinessWorkspaceCard
+                businessName={businessName}
+                businessInitials={businessInitials}
+              />
             </div>
 
-            <SidebarFooter />
+            <SidebarFooter
+              businessName={businessName}
+              businessInitials={businessInitials}
+            />
           </aside>
         </div>
       )}
