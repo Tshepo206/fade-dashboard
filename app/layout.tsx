@@ -1,20 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Geist_Mono,
+  Manrope,
+} from "next/font/google";
+
 import "./globals.css";
 
-const geistSans = Geist({
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
-  subsets: ["latin"],
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Fade AI Dashboard",
-  description: "KG Barber Workstation",
+  title: {
+    default: "GoodKeeper",
+    template: "%s | GoodKeeper",
+  },
+  description:
+    "AI-powered booking, customer management, bookkeeping, and reporting for service businesses.",
 };
 
 export default function RootLayout({
@@ -25,11 +35,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${manrope.variable} ${geistMono.variable}`}
     >
-      <body
-        className={`${geistSans.className} min-h-full bg-black text-white antialiased`}
-      >
+      <body className="bg-black font-sans text-white antialiased">
         {children}
       </body>
     </html>
