@@ -37,7 +37,7 @@ const navigationGroups: NavigationGroup[] = [
     items: [
       {
         label: "Dashboard",
-        href: "/",
+        href: "/dashboard",
         icon: LayoutDashboard,
       },
     ],
@@ -95,10 +95,6 @@ const navigationGroups: NavigationGroup[] = [
 ];
 
 function isNavigationItemActive(pathname: string, href: string) {
-  if (href === "/") {
-    return pathname === "/";
-  }
-
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -120,7 +116,10 @@ function SidebarNavigation({
           <div className="space-y-1">
             {group.items.map((item) => {
               const Icon = item.icon;
-              const active = isNavigationItemActive(pathname, item.href);
+              const active = isNavigationItemActive(
+                pathname,
+                item.href
+              );
 
               return (
                 <Link
@@ -147,7 +146,9 @@ function SidebarNavigation({
                     <span>{item.label}</span>
                   </div>
 
-                  {active && <ChevronRight className="h-4 w-4 text-white/80" />}
+                  {active && (
+                    <ChevronRight className="h-4 w-4 text-white/80" />
+                  )}
                 </Link>
               );
             })}
@@ -160,7 +161,10 @@ function SidebarNavigation({
 
 function BrandBlock() {
   return (
-    <Link href="/" className="flex items-center gap-3">
+    <Link
+      href="/dashboard"
+      className="flex items-center gap-3"
+    >
       <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-lg shadow-purple-500/20">
         <Sparkles className="h-5 w-5" />
 
@@ -218,7 +222,9 @@ function BusinessWorkspaceCard({
       </div>
 
       <div className="mt-4 flex items-center justify-between rounded-xl border border-zinc-800 bg-black/40 px-3 py-2">
-        <span className="text-xs text-zinc-500">Workspace status</span>
+        <span className="text-xs text-zinc-500">
+          Workspace status
+        </span>
 
         <span className="flex items-center gap-2 text-xs font-medium text-emerald-300">
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -266,8 +272,10 @@ export function AppSidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const workspace = useCurrentWorkspace();
+
   const businessName =
     workspace?.business_name || "Workspace";
+
   const businessInitials =
     getBusinessInitials(businessName);
 
