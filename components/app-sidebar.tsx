@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   Bot,
   CalendarDays,
   ChartNoAxesCombined,
   ChevronRight,
+  CreditCard,
   LayoutDashboard,
+  Loader2,
+  LogOut,
   Menu,
   ReceiptText,
   Settings,
@@ -19,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace";
+import { createClient } from "@/lib/supabase/client";
 
 type NavigationItem = {
   label: string;
@@ -86,6 +90,11 @@ const navigationGroups: NavigationGroup[] = [
     label: "Workspace",
     items: [
       {
+        label: "Billing",
+        href: "/billing",
+        icon: CreditCard,
+      },
+      {
         label: "Settings",
         href: "/settings",
         icon: Settings,
@@ -116,10 +125,7 @@ function SidebarNavigation({
           <div className="space-y-1">
             {group.items.map((item) => {
               const Icon = item.icon;
-              const active = isNavigationItemActive(
-                pathname,
-                item.href
-              );
+              const active = isNavigationItemActive(pathname, item.href);
 
               return (
                 <Link
@@ -161,26 +167,70 @@ function SidebarNavigation({
 
 function BrandBlock() {
   return (
-    <Link
-      href="/dashboard"
-      className="flex items-center gap-3"
-    >
-      <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-lg shadow-purple-500/20">
+    <Link href="/dashboard" className="flex min-w-0 items-center gap-3">
+      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-lg shadow-purple-500/20">
         <Sparkles className="h-5 w-5" />
 
         <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-[#050505] bg-emerald-400" />
       </div>
 
-      <div>
-        <p className="text-lg font-semibold tracking-tight text-white">
+      <div className="min-w-0">
+        <p className="truncate text-lg font-semibold tracking-tight text-white">
           GoodKeeper
         </p>
 
-        <p className="text-xs text-zinc-500">
+        <p className="truncate text-xs text-zinc-500">
           AI business operating system
         </p>
       </div>
     </Link>
+  );
+}
+
+function LogoutButton({
+  onLoggedOut,
+}: {
+  onLoggedOut?: () => void;
+}) {
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (loggingOut) {
+      return;
+    }
+
+    setLoggingOut(true);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Logout failed:", error);
+      setLoggingOut(false);
+      return;
+    }
+
+    onLoggedOut?.();
+    router.replace("/login");
+    router.refresh();
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleLogout()}
+      disabled={loggingOut}
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 transition hover:border-zinc-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+      aria-label="Log out"
+      title="Log out"
+    >
+      {loggingOut ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <LogOut className="h-4 w-4" />
+      )}
+    </button>
   );
 }
 
@@ -222,9 +272,7 @@ function BusinessWorkspaceCard({
       </div>
 
       <div className="mt-4 flex items-center justify-between rounded-xl border border-zinc-800 bg-black/40 px-3 py-2">
-        <span className="text-xs text-zinc-500">
-          Workspace status
-        </span>
+        <span className="text-xs text-zinc-500">Workspace status</span>
 
         <span className="flex items-center gap-2 text-xs font-medium text-emerald-300">
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -273,17 +321,15 @@ export function AppSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const workspace = useCurrentWorkspace();
 
-  const businessName =
-    workspace?.business_name || "Workspace";
-
-  const businessInitials =
-    getBusinessInitials(businessName);
+  const businessName = workspace?.business_name || "Workspace";
+  const businessInitials = getBusinessInitials(businessName);
 
   return (
     <>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-zinc-800 bg-[#050505] lg:flex lg:flex-col">
-        <div className="flex h-24 items-center border-b border-zinc-800 px-6">
+        <div className="flex min-h-24 items-center justify-between gap-4 border-b border-zinc-800 px-5 py-4">
           <BrandBlock />
+          <LogoutButton />
         </div>
 
         <div className="flex flex-1 flex-col overflow-y-auto py-6">
@@ -301,17 +347,21 @@ export function AppSidebar() {
         />
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-800 bg-black/90 px-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-4 border-b border-zinc-800 bg-black/90 px-4 py-3 backdrop-blur lg:hidden">
         <BrandBlock />
 
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:text-white"
-          aria-label="Open navigation"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <LogoutButton />
+
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:text-white"
+            aria-label="Open navigation"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {mobileOpen && (
@@ -324,17 +374,21 @@ export function AppSidebar() {
           />
 
           <aside className="absolute inset-y-0 left-0 flex w-[88%] max-w-sm flex-col border-r border-zinc-800 bg-[#050505] shadow-2xl">
-            <div className="flex h-20 items-center justify-between border-b border-zinc-800 px-5">
+            <div className="flex min-h-20 items-center justify-between gap-3 border-b border-zinc-800 px-5 py-4">
               <BrandBlock />
 
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 transition hover:text-white"
-                aria-label="Close navigation"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <LogoutButton onLoggedOut={() => setMobileOpen(false)} />
+
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 transition hover:text-white"
+                  aria-label="Close navigation"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-1 flex-col overflow-y-auto py-6">
