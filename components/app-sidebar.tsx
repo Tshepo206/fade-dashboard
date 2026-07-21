@@ -202,18 +202,21 @@ function LogoutButton({
 
     setLoggingOut(true);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signOut();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
 
-    if (error) {
+      if (error) {
+        throw error;
+      }
+
+      onLoggedOut?.();
+      router.replace("/login");
+      router.refresh();
+    } catch (error) {
       console.error("Logout failed:", error);
       setLoggingOut(false);
-      return;
     }
-
-    onLoggedOut?.();
-    router.replace("/login");
-    router.refresh();
   }
 
   return (
@@ -221,14 +224,19 @@ function LogoutButton({
       type="button"
       onClick={() => void handleLogout()}
       disabled={loggingOut}
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 transition hover:border-zinc-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-sm font-medium text-zinc-300 transition hover:border-purple-500 hover:bg-zinc-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
       aria-label="Log out"
-      title="Log out"
     >
       {loggingOut ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Logging out...</span>
+        </>
       ) : (
-        <LogOut className="h-4 w-4" />
+        <>
+          <LogOut className="h-4 w-4" />
+          <span>Logout</span>
+        </>
       )}
     </button>
   );
