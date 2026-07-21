@@ -23,8 +23,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
+import { apiRequest } from "@/lib/api";
 
 type ReconciliationPeriod = "today" | "week" | "month";
 
@@ -119,22 +118,6 @@ function formatDate(value?: string) {
   });
 }
 
-async function parseJsonResponse<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get("content-type") || "";
-
-  if (!contentType.includes("application/json")) {
-    const responseText = await response.text();
-
-    throw new Error(
-      responseText.trim().startsWith("<")
-        ? "The reconciliation service returned a web page instead of data. Check that the FastAPI backend is running and NEXT_PUBLIC_API_BASE_URL points to the backend."
-        : "The reconciliation service returned an invalid response."
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export default function ReconciliationPage() {
   const [period, setPeriod] =
     useState<ReconciliationPeriod>("month");
@@ -159,19 +142,12 @@ export default function ReconciliationPage() {
     setSummaryError("");
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/bank-reconciliation?period=${period}`,
+      const data = await apiRequest<ReconciliationResponse>(
+        `/dashboard/bank-reconciliation?period=${period}`,
         {
           cache: "no-store",
         }
       );
-
-      const data =
-        await parseJsonResponse<ReconciliationResponse>(response);
-
-      if (!response.ok) {
-        throw new Error("Could not load reconciliation information.");
-      }
 
       setSummary(data.reconciliation || null);
     } catch (error) {
@@ -214,18 +190,15 @@ export default function ReconciliationPage() {
       const formData = new FormData();
       formData.append("file", bankFile);
 
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/bank-reconciliation/upload?period=${period}`,
+      const data = await apiRequest<BankReconciliationResult>(
+        `/dashboard/bank-reconciliation/upload?period=${period}`,
         {
           method: "POST",
           body: formData,
         }
       );
 
-      const data =
-        await parseJsonResponse<BankReconciliationResult>(response);
-
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(
           "Bank statement reconciliation could not be completed."
         );

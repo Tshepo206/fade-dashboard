@@ -23,8 +23,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
+import { apiRequest } from "@/lib/api";
 
 type InsightPeriod = "today" | "week" | "month";
 
@@ -121,22 +120,6 @@ function getCategoryIcon(category: Exclude<InsightCategory, "all">) {
   return BrainCircuit;
 }
 
-async function parseJsonResponse<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get("content-type") || "";
-
-  if (!contentType.includes("application/json")) {
-    const responseText = await response.text();
-
-    throw new Error(
-      responseText.trim().startsWith("<")
-        ? "The AI insight service returned a web page instead of data. Check that the FastAPI backend is running and NEXT_PUBLIC_API_BASE_URL points to the backend."
-        : "The AI insight service returned an invalid response."
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export default function InsightsPage() {
   const [period, setPeriod] = useState<InsightPeriod>("month");
   const [category, setCategory] = useState<InsightCategory>("all");
@@ -153,19 +136,12 @@ export default function InsightsPage() {
     setError("");
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/ai-recommendations?period=${period}`,
+      const data = await apiRequest<RecommendationResponse>(
+        `/dashboard/ai-recommendations?period=${period}`,
         {
           cache: "no-store",
         }
       );
-
-      const data =
-        await parseJsonResponse<RecommendationResponse>(response);
-
-      if (!response.ok) {
-        throw new Error("Could not load AI business insights.");
-      }
 
       setRecommendations(data.recommendations || []);
     } catch (error) {

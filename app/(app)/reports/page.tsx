@@ -31,6 +31,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { apiRequest } from "@/lib/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
@@ -69,22 +70,6 @@ function formatShortDate(value: string) {
   });
 }
 
-async function parseJsonResponse<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get("content-type") || "";
-
-  if (!contentType.includes("application/json")) {
-    const responseText = await response.text();
-
-    throw new Error(
-      responseText.trim().startsWith("<")
-        ? "The reporting service returned a web page instead of data. Check that the FastAPI backend is running and NEXT_PUBLIC_API_BASE_URL points to the backend."
-        : "The reporting service returned an invalid response."
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export default function ReportsPage() {
   const [period, setPeriod] = useState<ReportPeriod>("month");
   const [trends, setTrends] = useState<Trend[]>([]);
@@ -98,29 +83,20 @@ export default function ReportsPage() {
     setError("");
 
     try {
-      const [trendResponse, serviceResponse] = await Promise.all([
-        fetch(
-          `${API_BASE_URL}/dashboard/revenue-trends?period=${period}`,
-          {
-            cache: "no-store",
-          }
-        ),
-        fetch(
-          `${API_BASE_URL}/dashboard/revenue-by-service?period=${period}`,
-          {
-            cache: "no-store",
-          }
-        ),
-      ]);
-
       const [trendData, serviceData] = await Promise.all([
-        parseJsonResponse<TrendResponse>(trendResponse),
-        parseJsonResponse<ServiceResponse>(serviceResponse),
+        apiRequest<TrendResponse>(
+          `/dashboard/revenue-trends?period=${period}`,
+          {
+            cache: "no-store",
+          }
+        ),
+        apiRequest<ServiceResponse>(
+          `/dashboard/revenue-by-service?period=${period}`,
+          {
+            cache: "no-store",
+          }
+        ),
       ]);
-
-      if (!trendResponse.ok || !serviceResponse.ok) {
-        throw new Error("Could not load report data.");
-      }
 
       setTrends(trendData.trends || []);
       setServices(serviceData.services || []);

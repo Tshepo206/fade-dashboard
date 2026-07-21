@@ -22,9 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL!;
+import { apiRequest } from "@/lib/api";
 
 type Service = {
   id?: number;
@@ -96,31 +94,6 @@ function formatMoney(value?: number | null) {
   })}`;
 }
 
-async function parseJsonResponse<T>(
-  response: Response
-): Promise<T> {
-  const contentType =
-    response.headers.get("content-type") ||
-    "";
-
-  if (
-    !contentType.includes(
-      "application/json"
-    )
-  ) {
-    const responseText =
-      await response.text();
-
-    throw new Error(
-      responseText.trim().startsWith("<")
-        ? "The service returned a web page instead of data. Check NEXT_PUBLIC_API_BASE_URL."
-        : "The service returned an invalid response."
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
 function getCurrencyLabel(value: string) {
   const labels: Record<string, string> = {
     ZAR: "South African Rand (ZAR)",
@@ -181,22 +154,15 @@ export default function SettingsPage() {
       setServicesError("");
 
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/dashboard/services`,
-          {
-            cache: "no-store",
-          }
-        );
-
         const data =
-          await parseJsonResponse<ServicesResponse>(
-            response
+          await apiRequest<ServicesResponse>(
+            "/dashboard/services",
+            {
+              cache: "no-store",
+            }
           );
 
-        if (
-          !response.ok ||
-          !data.success
-        ) {
+        if (!data.success) {
           throw new Error(
             data.detail ||
               "Could not load services."

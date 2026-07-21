@@ -99,7 +99,12 @@ const emptySummary: Summary = {
 };
 
 function getTodayInputDate() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 function formatMoney(value: number) {
@@ -236,7 +241,7 @@ export default function DashboardPage() {
   }, [period, trendPeriod]);
 
   useEffect(() => {
-    async function initialiseDashboard() {
+    async function loadWorkspace() {
       try {
         const workspace = await getCurrentWorkspace();
 
@@ -249,11 +254,13 @@ export default function DashboardPage() {
           workspaceError
         );
       }
-
-      await loadDashboard();
     }
 
-    void initialiseDashboard();
+    void loadWorkspace();
+  }, []);
+
+  useEffect(() => {
+    void loadDashboard();
   }, [loadDashboard]);
 
   const todayAppointments = useMemo(() => {

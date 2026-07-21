@@ -23,6 +23,7 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { apiRequest } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -35,8 +36,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 const CUSTOMERS_PER_PAGE = 8;
 
@@ -141,28 +140,6 @@ function normalizeCustomerName(value: string) {
     .replace(/\s+/g, " ");
 }
 
-async function parseJsonResponse<T>(
-  response: Response
-): Promise<T> {
-  const contentType =
-    response.headers.get("content-type") || "";
-
-  if (
-    !contentType.includes("application/json")
-  ) {
-    const responseText =
-      await response.text();
-
-    throw new Error(
-      responseText.trim().startsWith("<")
-        ? "The customer service returned a web page instead of data. Check that the FastAPI backend is running and NEXT_PUBLIC_API_BASE_URL is correct."
-        : "The customer service returned an invalid response."
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export default function CustomersPage() {
   const [period, setPeriod] =
     useState<CustomerPeriod>("month");
@@ -220,54 +197,22 @@ export default function CustomersPage() {
       setError("");
 
       try {
-        const [
-          databaseResponse,
-          performanceResponse,
-        ] = await Promise.all([
-          fetch(
-            `${API_BASE_URL}/dashboard/customers?limit=500`,
-            {
-              cache: "no-store",
-            }
-          ),
-          fetch(
-            `${API_BASE_URL}/dashboard/top-customers?period=${period}&limit=50`,
-            {
-              cache: "no-store",
-            }
-          ),
-        ]);
-
-        const databaseData =
-          await parseJsonResponse<CustomerDatabaseResponse>(
-            databaseResponse
-          );
-
-        const performanceData =
-          await parseJsonResponse<TopCustomersResponse>(
-            performanceResponse
-          );
-
-        if (!databaseResponse.ok) {
-          throw new Error(
-            databaseData.detail ||
-              "Could not load the customer database."
-          );
-        }
-
-        if (!performanceResponse.ok) {
-          throw new Error(
-            performanceData.detail ||
-              "Could not load customer performance."
-          );
-        }
+        const [databaseData, performanceData] =
+          await Promise.all([
+            apiRequest<CustomerDatabaseResponse>(
+              "/dashboard/customers?limit=500"
+            ),
+            apiRequest<TopCustomersResponse>(
+              `/dashboard/top-customers?period=${period}&limit=50`
+            ),
+          ]);
 
         setDatabaseCustomers(
-          databaseData.customers || []
+          databaseData.customers ?? []
         );
 
         setPerformanceCustomers(
-          performanceData.customers || []
+          performanceData.customers ?? []
         );
       } catch (requestError) {
         const message =
@@ -339,33 +284,25 @@ export default function CustomersPage() {
     setSavingCustomer(true);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/customers`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            customer_name: customerName,
-            phone_number: phoneNumber,
-            email:
-              customerForm.email.trim() ||
-              null,
-            notes:
-              customerForm.notes.trim() ||
-              null,
-          }),
-        }
-      );
-
       const data =
-        await parseJsonResponse<CreateCustomerResponse>(
-          response
+        await apiRequest<CreateCustomerResponse>(
+          "/dashboard/customers",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              customer_name: customerName,
+              phone_number: phoneNumber,
+              email:
+                customerForm.email.trim() ||
+                null,
+              notes:
+                customerForm.notes.trim() ||
+                null,
+            }),
+          }
         );
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(
           data.detail ||
             data.message ||

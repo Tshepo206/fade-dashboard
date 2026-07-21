@@ -28,9 +28,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL!;
+import { apiRequest } from "@/lib/api";
 
 const TRANSACTIONS_PER_PAGE = 8;
 
@@ -270,34 +268,6 @@ function isIncomeTransaction(
   );
 }
 
-async function parseJsonResponse<T>(
-  response: Response
-): Promise<T> {
-  const contentType =
-    response.headers.get(
-      "content-type"
-    ) || "";
-
-  if (
-    !contentType.includes(
-      "application/json"
-    )
-  ) {
-    const responseText =
-      await response.text();
-
-    throw new Error(
-      responseText
-        .trim()
-        .startsWith("<")
-        ? "The transaction service returned a web page instead of data. Check NEXT_PUBLIC_API_BASE_URL."
-        : "The transaction service returned an invalid response."
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export default function TransactionsPage() {
   const [
     transactions,
@@ -381,22 +351,15 @@ export default function TransactionsPage() {
           );
         }
 
-        const response = await fetch(
-          `${API_BASE_URL}/dashboard/transactions?${query.toString()}`,
-          {
-            cache: "no-store",
-          }
-        );
-
         const data =
-          await parseJsonResponse<TransactionsResponse>(
-            response
+          await apiRequest<TransactionsResponse>(
+            `/dashboard/transactions?${query.toString()}`,
+            {
+              cache: "no-store",
+            }
           );
 
-        if (
-          !response.ok ||
-          !data.success
-        ) {
+        if (!data.success) {
           throw new Error(
             data.detail ||
               data.error ||
