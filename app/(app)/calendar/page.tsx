@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { Badge } from "@/components/ui/badge";
+import { apiRequest } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -31,8 +32,6 @@ import {
   X,
 } from "lucide-react";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 type CalendarView =
   | "day"
@@ -277,34 +276,6 @@ function statusStyles(status: string) {
   };
 }
 
-async function parseJsonResponse<T>(
-  response: Response
-): Promise<T> {
-  const contentType =
-    response.headers.get(
-      "content-type"
-    ) || "";
-
-  if (
-    !contentType.includes(
-      "application/json"
-    )
-  ) {
-    const responseText =
-      await response.text();
-
-    throw new Error(
-      responseText
-        .trim()
-        .startsWith("<")
-        ? "The backend returned a web page instead of JSON. Check NEXT_PUBLIC_API_BASE_URL and confirm the FastAPI service is running."
-        : "The backend returned an invalid response."
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export default function CalendarPage() {
   const [
     calendarView,
@@ -439,26 +410,14 @@ export default function CalendarPage() {
       setCalendarError("");
 
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/dashboard/calendar?view=${calendarView}&target_date=${selectedDate}`,
-          {
-            cache: "no-store",
-          }
+        const data = await apiRequest<{
+          success?: boolean;
+          slots?: CalendarSlot[];
+          detail?: string;
+        }>(
+          `/dashboard/calendar?view=${calendarView}&target_date=${selectedDate}`,
+          { cache: "no-store" }
         );
-
-        const data =
-          await parseJsonResponse<{
-            success?: boolean;
-            slots?: CalendarSlot[];
-            detail?: string;
-          }>(response);
-
-        if (!response.ok) {
-          throw new Error(
-            data.detail ||
-              "Could not load the calendar."
-          );
-        }
 
         setCalendarSlots(
           data.slots || []
@@ -486,46 +445,18 @@ export default function CalendarPage() {
 
       try {
         const [
-          customersResponse,
-          servicesResponse,
+          customersData,
+          servicesData,
         ] = await Promise.all([
-          fetch(
-            `${API_BASE_URL}/dashboard/customers?limit=500`,
-            {
-              cache: "no-store",
-            }
+          apiRequest<CustomersResponse>(
+            "/dashboard/customers?limit=500",
+            { cache: "no-store" }
           ),
-          fetch(
-            `${API_BASE_URL}/dashboard/services`,
-            {
-              cache: "no-store",
-            }
+          apiRequest<ServicesResponse>(
+            "/dashboard/services",
+            { cache: "no-store" }
           ),
         ]);
-
-        const customersData =
-          await parseJsonResponse<CustomersResponse>(
-            customersResponse
-          );
-
-        const servicesData =
-          await parseJsonResponse<ServicesResponse>(
-            servicesResponse
-          );
-
-        if (!customersResponse.ok) {
-          throw new Error(
-            customersData.detail ||
-              "Could not load customers."
-          );
-        }
-
-        if (!servicesResponse.ok) {
-          throw new Error(
-            servicesData.detail ||
-              "Could not load services."
-          );
-        }
 
         setCustomers(
           customersData.customers || []
@@ -557,24 +488,11 @@ export default function CalendarPage() {
         setBookingSlotsError("");
 
         try {
-          const response = await fetch(
-            `${API_BASE_URL}/dashboard/calendar?view=day&target_date=${date}`,
-            {
-              cache: "no-store",
-            }
-          );
-
           const data =
-            await parseJsonResponse<AvailableSlotsResponse>(
-              response
+            await apiRequest<AvailableSlotsResponse>(
+              `/dashboard/calendar?view=day&target_date=${date}`,
+              { cache: "no-store" }
             );
-
-          if (!response.ok) {
-            throw new Error(
-              data.detail ||
-                "Could not load available times."
-            );
-          }
 
           setBookingDateSlots(
             (data.slots || []).filter(
@@ -657,35 +575,25 @@ export default function CalendarPage() {
     setBlockLoading(true);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/calendar/block`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            start_datetime: `${selectedDate}T${blockStartTime}:00`,
-            end_datetime: `${selectedDate}T${blockEndTime}:00`,
-            reason:
-              blockReason.trim() ||
-              "Blocked time",
-          }),
-        }
-      );
+      const data = await apiRequest<{
+        success?: boolean;
+        message?: string;
+        detail?: string;
+      }>("/dashboard/calendar/block", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          start_datetime: `${selectedDate}T${blockStartTime}:00`,
+          end_datetime: `${selectedDate}T${blockEndTime}:00`,
+          reason:
+            blockReason.trim() ||
+            "Blocked time",
+        }),
+      });
 
-      const data =
-        await parseJsonResponse<{
-          success?: boolean;
-          message?: string;
-          detail?: string;
-        }>(response);
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
+      if (!data.success) {
         throw new Error(
           data.detail ||
             data.message ||
@@ -724,24 +632,16 @@ export default function CalendarPage() {
     }
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/calendar/unblock/${slotId}`,
-        {
-          method: "DELETE",
-        }
+      const data = await apiRequest<{
+        success?: boolean;
+        message?: string;
+        detail?: string;
+      }>(
+        `/dashboard/calendar/unblock/${slotId}`,
+        { method: "DELETE" }
       );
 
-      const data =
-        await parseJsonResponse<{
-          success?: boolean;
-          message?: string;
-          detail?: string;
-        }>(response);
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
+      if (!data.success) {
         throw new Error(
           data.detail ||
             data.message ||
@@ -960,43 +860,36 @@ export default function CalendarPage() {
     setBookingSaving(true);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/manual-booking`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            customer_name:
-              customerName,
-            phone_number:
-              phoneNumber,
-            service_id: Number(
-              bookingForm.service_id
-            ),
-            appointment_timestamp:
-              appointmentTimestamp,
-            customer_email:
-              bookingForm.customer_email.trim() ||
-              null,
-            customer_notes:
-              bookingForm.customer_notes.trim() ||
-              null,
-          }),
-        }
-      );
-
       const data =
-        await parseJsonResponse<ManualBookingResponse>(
-          response
+        await apiRequest<ManualBookingResponse>(
+          "/dashboard/manual-booking",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              customer_name:
+                customerName,
+              phone_number:
+                phoneNumber,
+              service_id: Number(
+                bookingForm.service_id
+              ),
+              appointment_timestamp:
+                appointmentTimestamp,
+              customer_email:
+                bookingForm.customer_email.trim() ||
+                null,
+              customer_notes:
+                bookingForm.customer_notes.trim() ||
+                null,
+            }),
+          }
         );
 
-      if (
-        !response.ok ||
-        !data.success
-      ) {
+      if (!data.success) {
         throw new Error(
           data.detail ||
             data.message ||
@@ -1034,24 +927,15 @@ export default function CalendarPage() {
 
       setBookingDateSlots([]);
 
-      const refreshResponse =
-        await fetch(
-          `${API_BASE_URL}/dashboard/calendar?view=day&target_date=${bookingForm.appointment_date}`,
-          {
-            cache: "no-store",
-          }
-        );
-
       const refreshData =
-        await parseJsonResponse<AvailableSlotsResponse>(
-          refreshResponse
+        await apiRequest<AvailableSlotsResponse>(
+          `/dashboard/calendar?view=day&target_date=${bookingForm.appointment_date}`,
+          { cache: "no-store" }
         );
 
-      if (refreshResponse.ok) {
-        setCalendarSlots(
-          refreshData.slots || []
-        );
-      }
+      setCalendarSlots(
+        refreshData.slots || []
+      );
     } catch (error) {
       setBookingError(
         error instanceof Error
