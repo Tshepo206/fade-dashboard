@@ -833,7 +833,7 @@ export default function BillingPage() {
 
                 <div className="flex flex-wrap gap-3 pt-2">
 
-                  {!hasAccess ? (
+                  {!subscription?.card_last4 ? (
                     <button
                       type="button"
                       onClick={
@@ -848,7 +848,7 @@ export default function BillingPage() {
 
                       {isLoadingCheckout
                         ? "Opening checkout..."
-                        : "Activate Subscription"}
+                        : "Add Payment Method"}
                     </button>
                   ) : (
                     <button
@@ -870,7 +870,7 @@ export default function BillingPage() {
                   )}
 
 
-                  {hasAccess && (
+                    {subscription?.subscription_code && (
                     <button
                       type="button"
                       onClick={
@@ -1410,7 +1410,7 @@ function BillingMetric({
             {title}
           </p>
 
-          <p className="mt-4 break-words text-2xl font-semibold tracking-tight">
+          <p className="mt-4 text-xl font-semibold tracking-tight whitespace-nowrap">
             {value}
           </p>
 
