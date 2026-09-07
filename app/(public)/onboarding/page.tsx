@@ -384,82 +384,113 @@ export default function OnboardingPage() {
 
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
+  event: FormEvent<HTMLFormElement>
+) {
+  event.preventDefault();
 
-    const validationError =
-      validateForm();
+  const validationError =
+    validateForm();
 
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-    setSuccessMessage("");
-
-    try {
-      const supabase = createClient();
-
-      const {
-        data: createdBusinessId,
-        error: workspaceError,
-      } = await supabase.rpc(
-        "create_business_workspace",
-        {
-          p_business_name:
-            form.businessName.trim(),
-          p_owner_name:
-            form.ownerName.trim(),
-          p_currency:
-            form.currency,
-          p_timezone:
-            form.timezone,
-        }
-      );
-
-      if (workspaceError) {
-        throw workspaceError;
-      }
-
-      if (!createdBusinessId) {
-        throw new Error(
-          "The workspace could not be created."
-        );
-      }
-
-      setBusinessId(
-        String(createdBusinessId)
-      );
-
-      setBillingForm((current) => ({
-        ...current,
-        billingName:
-          current.billingName ||
-          form.businessName.trim(),
-      }));
-
-      setSuccessMessage(
-        "Workspace created. Now add your billing details."
-      );
-
-      setStep("billing");
-
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : (
-              "Workspace creation failed. " +
-              "Please try again."
-            )
-      );
-    } finally {
-      setSaving(false);
-    }
+  if (validationError) {
+    setError(validationError);
+    return;
   }
+
+  setSaving(true);
+  setError("");
+  setSuccessMessage("");
+
+  try {
+    // First check whether this user already
+    // belongs to an existing workspace.
+    try {
+      const existingWorkspace =
+        await getCurrentWorkspace();
+
+      if (existingWorkspace?.business_id) {
+        setBusinessId(
+          existingWorkspace.business_id
+        );
+
+        setBillingForm((current) => ({
+          ...current,
+          billingName:
+            current.billingName ||
+            existingWorkspace.business_name ||
+            form.businessName.trim(),
+        }));
+
+        setSuccessMessage(
+          "Workspace found. Continue with your billing details."
+        );
+
+        setStep("billing");
+        return;
+      }
+    } catch {
+      // No existing workspace.
+      // Continue and create a new one.
+    }
+
+    const supabase = createClient();
+
+    const {
+      data: createdBusinessId,
+      error: workspaceError,
+    } = await supabase.rpc(
+      "create_business_workspace",
+      {
+        p_business_name:
+          form.businessName.trim(),
+        p_owner_name:
+          form.ownerName.trim(),
+        p_currency:
+          form.currency,
+        p_timezone:
+          form.timezone,
+      }
+    );
+
+    if (workspaceError) {
+      throw workspaceError;
+    }
+
+    if (!createdBusinessId) {
+      throw new Error(
+        "The workspace could not be created."
+      );
+    }
+
+    setBusinessId(
+      String(createdBusinessId)
+    );
+
+    setBillingForm((current) => ({
+      ...current,
+      billingName:
+        current.billingName ||
+        form.businessName.trim(),
+    }));
+
+    setSuccessMessage(
+      "Workspace created. Now add your billing details."
+    );
+
+    setStep("billing");
+
+  } catch (requestError) {
+    setError(
+      requestError instanceof Error
+        ? requestError.message
+        : (
+            "Workspace creation failed. " +
+            "Please try again."
+          )
+    );
+  } finally {
+    setSaving(false);
+  }
+}
 
 
   async function handleBillingSubmit(
