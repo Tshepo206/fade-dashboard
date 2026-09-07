@@ -1410,7 +1410,7 @@ function BillingMetric({
             {title}
           </p>
 
-          <p className="mt-4 text-xl font-semibold tracking-tight whitespace-nowrap">
+          <p className="mt-4 break-words text-xl font-semibold leading-snug tracking-tight">
             {value}
           </p>
 
